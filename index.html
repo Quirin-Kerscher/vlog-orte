@@ -1,372 +1,283 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vlog-Orte</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vlog-Orte</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="manifest.json">
 
-<style>
-  body{margin:0;font-family:system-ui,Arial;background:#0f0f10;color:#eaeaea;}
-  header{padding:12px 14px;border-bottom:1px solid #2a2a2a;position:sticky;top:0;background:#0f0f10;z-index:10;}
-  .wrap{padding:12px;display:grid;gap:12px;}
-  .card{background:#151517;border:1px solid #2a2a2a;border-radius:18px;padding:12px;}
-  #map{height:42vh;border-radius:14px;overflow:hidden;}
-  .small{color:#aaa;font-size:13px;line-height:1.35;}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-  button, select{
-    background:#1b1b1d;border:1px solid #2f2f33;color:#eaeaea;
-    padding:10px 14px;border-radius:12px;cursor:pointer;
-  }
-  button:disabled{opacity:.55;cursor:not-allowed;}
-  a{color:#8ab4ff;text-decoration:none;}
-  hr{border:none;border-top:1px solid #2a2a2a;margin:10px 0;}
-  .badge{display:inline-block;padding:4px 8px;border:1px solid #2f2f33;border-radius:999px;font-size:12px;color:#cfcfd2;background:#1b1b1d;}
-  .item{border-top:1px solid #2a2a2a;padding-top:8px;margin-top:8px;}
-  h2{margin:0 0 8px 0;font-size:16px;}
-  textarea{
-    width:100%; min-height:160px; resize:vertical;
-    background:#0f0f10; border:1px solid #2a2a2a; color:#eaeaea;
-    border-radius:14px; padding:10px; font-family:inherit; font-size:13px; line-height:1.35;
-  }
-  .ok{color:#9be59b}
-  .warn{color:#ffd27d}
-  .bad{color:#ff9b9b}
-</style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    :root { color-scheme: dark; }
+    body{
+      margin:0; font-family: system-ui, Arial;
+      background:#0f0f10; color:#eaeaea;
+    }
+    header{
+      padding:12px 14px;
+      border-bottom:1px solid #2a2a2a;
+      background:#0f0f10;
+      position:sticky; top:0; z-index:10;
+    }
+    .wrap{ padding:12px 14px; display:grid; gap:12px; }
+    .card{
+      background:#151517; border:1px solid #2a2a2a;
+      border-radius:18px; padding:12px; box-shadow: 0 8px 20px rgba(0,0,0,.25);
+    }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row > * { flex: 0 0 auto; }
+    button, select, input, textarea{
+      background:#1b1b1d; border:1px solid #2f2f33; color:#eaeaea;
+      padding:10px 12px; border-radius:12px; font-size:15px;
+    }
+    button{ cursor:pointer; }
+    button:disabled{ opacity:.45; cursor:not-allowed; }
+    .muted{ color:#b8b8b8; }
+    .small{ font-size:13px; color:#b8b8b8; }
+    #map{
+      height:220px; border-radius:18px;
+      border:1px solid #2a2a2a; overflow:hidden;
+    }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid #2a2a2a; background:#111113; font-size:13px;
+    }
+    textarea{
+      width:100%; min-height:140px; resize:vertical;
+      line-height:1.35;
+    }
+    .sep{ height:1px; background:#2a2a2a; margin:10px 0; }
+    .danger{ color:#ffb3b3; }
+    a{ color:#9fd0ff; text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+    .two{ display:grid; gap:12px; }
+    @media (min-width: 780px){
+      .two{ grid-template-columns: 1.1fr .9fr; }
+      #map{ height:360px; }
+    }
+    #debugBox{
+      white-space:pre-wrap;
+      background:#0f0f10; border:1px dashed #2a2a2a;
+      border-radius:12px; padding:10px; font-size:12px;
+      max-height:160px; overflow:auto;
+      display:none;
+    }
+  </style>
 </head>
 
 <body>
-<header>
-  <strong>Vlog-Orte</strong><br>
-  <span class="small" id="status">bereit</span>
-</header>
+  <header>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+      <div>
+        <div style="font-weight:800; font-size:18px;">Vlog-Orte</div>
+        <div class="small" id="statusLine">bereit</div>
+      </div>
+      <div class="row">
+        <button id="btnDebug">Debug</button>
+      </div>
+    </div>
+  </header>
 
-<div class="wrap">
+  <div class="wrap two">
+    <div class="card">
+      <div id="map"></div>
 
-  <div class="card">
-    <div class="row">
-      <button id="btnOnce" onclick="getLocationOnce()">Standort jetzt holen</button>
-      <button id="btnStart" onclick="startTracking()">Tracking starten</button>
-      <button id="btnStop" onclick="stopTracking()" disabled>Stop</button>
-      <button id="btnInfo" onclick="fetchPlaceInfo(true)" disabled>Infos hier holen</button>
+      <div class="sep"></div>
+
+      <div class="row">
+        <button id="btnStart">Tracking starten</button>
+        <button id="btnStop" disabled>Stop</button>
+        <button id="btnInfo">Infos hier holen</button>
+        <button id="btnNow">Standort jetzt holen</button>
+      </div>
+
+      <div style="margin-top:10px; display:grid; gap:8px;">
+        <div class="pill">GPS: <span id="gpsLine" class="muted">—</span></div>
+        <div class="small">
+          Tipp: In Android/Chrome muss die Standortfreigabe für die Seite erlaubt sein.
+          Wenn’s nicht geht: Browser-Einstellungen → Website-Einstellungen → Standort → Erlauben.
+        </div>
+      </div>
+
+      <div id="debugBox" class="small" style="margin-top:10px;"></div>
     </div>
 
-    <div class="small" style="margin-top:8px" id="gpsInfo">GPS: —</div>
-    <div class="small" style="margin-top:6px" id="permInfo">Berechtigung: —</div>
+    <div class="card">
+      <div style="font-weight:800; font-size:18px;">Ort-Infos</div>
+      <div class="muted" id="infoIntro" style="margin-top:6px;">
+        Noch keine Infos geladen.
+      </div>
 
-    <div class="small" style="margin-top:8px">
-      Tipp: Beim ersten Mal muss Android/Chrome nach Standort fragen. Wenn nix kommt: Website-Einstellungen → Standort → Zulassen.
+      <div class="sep"></div>
+
+      <div id="infoBox" class="small">
+        Starte das Tracking oder drück „Standort jetzt holen“.
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <span class="pill">Wikipedia: <span id="wikiLink" class="muted">—</span></span>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="row">
+        <button id="btnScript">Vlog-Skript</button>
+        <select id="lenSel">
+          <option value="30">30 Sekunden</option>
+          <option value="60">60 Sekunden</option>
+        </select>
+        <button id="btnHook">Hook wechseln</button>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="btnCopy">Skript kopieren</button>
+        <button id="btnSaveSpot">Ort speichern</button>
+      </div>
+
+      <div style="margin-top:10px;">
+        <textarea id="scriptBox" placeholder="Hier erscheint dein fertiges Vlog-Skript (30/60 Sekunden)…"></textarea>
+        <div class="small" style="margin-top:8px;">
+          Hinweis: Wikipedia-Infos sind eine gute Basis, aber für heikle Details kurz gegenchecken (Infotafel/Museum/Offizielles).
+        </div>
+      </div>
     </div>
 
-    <hr>
-    <div class="small" id="debug" style="white-space:pre-wrap"></div>
-  </div>
-
-  <div id="map" class="card"></div>
-
-  <div class="card" id="infoCard">
-    <h2>Ort-Infos</h2>
-    <div class="small" id="placeLine">Noch keine Infos geladen.</div>
-
-    <hr>
-
-    <div class="small" id="wikiText">Starte das Tracking oder drück „Standort jetzt holen“.</div>
-
-    <div class="row" style="margin-top:10px">
-      <span class="badge" id="wikiTitleBadge">Wikipedia: —</span>
-      <a id="wikiLink" href="#" target="_blank" rel="noreferrer" style="display:none">Artikel öffnen</a>
-      <span class="badge" id="kindBadge" style="display:none">—</span>
-      <span class="badge" id="distBadge" style="display:none">—</span>
-    </div>
-
-    <hr>
-
-    <div class="small" id="highlights"></div>
-
-    <hr>
-
-    <div class="row">
-      <span class="badge">Vlog-Skript</span>
-      <select id="lenSel">
-        <option value="30" selected>30 Sekunden</option>
-        <option value="60">60 Sekunden</option>
-      </select>
-      <button id="btnHook" onclick="nextHook()" disabled>Hook wechseln</button>
-      <button id="btnCopy" onclick="copyVlogScript()" disabled>Skript kopieren</button>
-      <button id="btnSaveSpot" onclick="saveCurrentSpot()" disabled>Ort speichern</button>
-    </div>
-
-    <div style="margin-top:10px">
-      <textarea id="scriptBox" placeholder="Hier erscheint dein fertiges Vlog-Skript (30/60 Sekunden)…" readonly></textarea>
-      <div class="small" style="margin-top:6px">
-        Hinweis: Wikipedia-Infos sind eine gute Basis, aber für ganz heikle Details kurz gegenchecken (Infotafel/Museum/Offizielles).
+    <div class="card" style="grid-column:1 / -1;">
+      <div style="font-weight:800; font-size:18px;">Gespeicherte Orte</div>
+      <div class="small muted">Wird lokal auf deinem Handy gespeichert (kein Server).</div>
+      <div class="sep"></div>
+      <div id="visitsBox" class="small muted">Noch nichts gespeichert.</div>
+      <div class="row" style="margin-top:10px;">
+        <button id="btnClear">Alle löschen</button>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>Gespeicherte Orte</h2>
-    <div class="small">Wird lokal auf deinem Handy gespeichert (kein Server).</div>
-    <div id="list"></div>
-  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    /* ===================== Helpers ===================== */
+const $ = (id) => document.getElementById(id);
 
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-/* ------------------ Helfer ------------------ */
-function $(id){ return document.getElementById(id); }
-function setStatus(t, cls){
-  $("status").className = "small " + (cls||"");
-  $("status").innerText = t;
-}
-function logDebug(line){
-  const d = $("debug");
-  d.textContent = (d.textContent ? d.textContent + "\n" : "") + line;
-}
-function clearDebug(){ $("debug").textContent = ""; }
-function escapeHtml(s){ return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
-
-function distanceMeters(a,b,c,d){
-  const R=6371000;
-  const toRad=x=>x*Math.PI/180;
-  const dLat=toRad(c-a), dLon=toRad(d-b);
-  const x=Math.sin(dLat/2)**2 + Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
-  return 2*R*Math.asin(Math.sqrt(x));
-}
-function splitSentences(text){
-  const cleaned = (text||"").replace(/\s+/g," ").trim();
-  if(!cleaned) return [];
-  return cleaned.split(/(?<=[.!?])\s+/).map(s=>s.trim()).filter(Boolean);
-}
-function shorten(s, maxLen){
-  s = (s||"").trim();
-  if(s.length<=maxLen) return s;
-  return s.slice(0, maxLen-1).trim()+"…";
+function setStatus(text, kind){
+  $("statusLine").textContent = text;
+  if(kind==="ok") $("statusLine").style.color = "#b8ffca";
+  else if(kind==="warn") $("statusLine").style.color = "#ffe2a6";
+  else if(kind==="bad") $("statusLine").style.color = "#ffb3b3";
+  else $("statusLine").style.color = "#b8b8b8";
 }
 
-/* ------------------ Karte ------------------ */
-let map = L.map('map').setView([48.8,12.3],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
-let meMarker=null;
-
-/* ------------------ Storage ------------------ */
-const STORAGE="vlog_orte_visits_v3";
-let visits = JSON.parse(localStorage.getItem(STORAGE) || "[]");
-function saveVisits(){ localStorage.setItem(STORAGE, JSON.stringify(visits)); }
-function renderVisits(){
-  $("list").innerHTML="";
-  visits.forEach(v=>{
-    const div=document.createElement("div");
-    div.className="item";
-    div.innerHTML = `
-      <strong>${escapeHtml(v.title)}</strong>
-      <div class="small">${new Date(v.time).toLocaleString()}</div>
-      <div class="small">${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}</div>
-      ${v.url ? `<div class="small"><a href="${v.url}" target="_blank" rel="noreferrer">Quelle öffnen</a></div>` : ""}
-    `;
-    $("list").appendChild(div);
-  });
+let debugOn = false;
+function clearDebug(){ $("debugBox").textContent = ""; }
+function logDebug(msg){
+  if(!debugOn) return;
+  const box = $("debugBox");
+  box.textContent += msg + "\n";
+  box.scrollTop = box.scrollHeight;
 }
-renderVisits();
 
-/* ------------------ Global State ------------------ */
-let watchId=null;
-let lastFix=null;
-let lastInfoFetchAt=0;
-let lastInfoLatLon=null;
+/* Haversine */
+function distanceMeters(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = (x)=>x*Math.PI/180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
-let currentInfo = {
-  kind: null, // "poi" | "place"
-  title: null,
-  url: null,
-  extract: null,
-  labelLine: null,
-  poiDist: null,
-  hooks: [],
-  hookIndex: 0,
-  highlights: []
-};
+/* ===================== Map ===================== */
+let map, marker, accuracyCircle;
 
-/* ------------------ Permission Status (wenn verfügbar) ------------------ */
-async function refreshPermissionInfo(){
+function initMap(){
+  map = L.map("map", { zoomControl:true }).setView([48.65, 12.33], 15);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  marker = L.marker([48.65, 12.33]).addTo(map);
+  accuracyCircle = L.circle([48.65, 12.33], { radius: 0 }).addTo(map);
+}
+initMap();
+
+/* ===================== Storage: Visits ===================== */
+let visits = [];
+const VISITS_KEY = "vlog_orte_visits_v1";
+
+function loadVisits(){
   try{
-    if(!navigator.permissions || !navigator.permissions.query){
-      $("permInfo").innerText = "Berechtigung: (Permissions API nicht verfügbar)";
-      return;
-    }
-    const p = await navigator.permissions.query({name:"geolocation"});
-    $("permInfo").innerText = `Berechtigung: ${p.state}`;
-    p.onchange = ()=>{ $("permInfo").innerText = `Berechtigung: ${p.state}`; };
-  }catch{
-    $("permInfo").innerText = "Berechtigung: (nicht abrufbar)";
-  }
+    visits = JSON.parse(localStorage.getItem(VISITS_KEY) || "[]");
+    if(!Array.isArray(visits)) visits = [];
+  }catch{ visits = []; }
 }
-refreshPermissionInfo();
-
-/* ------------------ Robustes GPS: 1) einmal holen 2) tracking ------------------ */
-function ensureSecureContext(){
-  // GitHub Pages ist HTTPS, aber falls jemand anders öffnet:
-  if(location.protocol !== "https:" && location.hostname !== "localhost"){
-    setStatus("Fehler: Standort geht nur über HTTPS", "bad");
-    logDebug("❌ Nicht-HTTPS: Geolocation wird blockiert.");
-    return false;
-  }
-  return true;
+function saveVisits(){
+  localStorage.setItem(VISITS_KEY, JSON.stringify(visits));
 }
-
-function updateGpsUI(pos){
-  const {latitude:lat, longitude:lon, accuracy} = pos.coords;
-  lastFix = {lat,lon,accuracy,time:Date.now()};
-
-  $("gpsInfo").innerText = `GPS: ${lat.toFixed(5)}, ${lon.toFixed(5)} | Genauigkeit ~${Math.round(accuracy)} m`;
-
-  if(!meMarker){
-    meMarker = L.marker([lat,lon]).addTo(map);
-    map.setView([lat,lon], 16);
-  } else {
-    meMarker.setLatLng([lat,lon]);
-  }
-
-  // Buttons freischalten
-  $("btnInfo").disabled = false;
-  $("btnHook").disabled = false; // wird bei Info-Fill sinnvoll, aber stört nicht
-  $("btnCopy").disabled = false; // dito
-  $("btnSaveSpot").disabled = false;
-}
-
-function onGeoError(err, where){
-  const msg = err?.message || "Unbekannter Fehler";
-  const code = err?.code;
-
-  setStatus("Standort-Fehler", "bad");
-  logDebug(`❌ ${where} Fehler: code=${code} msg=${msg}`);
-
-  // Hilfreiche Hinweise für Android:
-  let hint = "Bitte Standort erlauben.";
-  if(code === 1) hint = "Standort verweigert. Chrome: Website-Einstellungen → Standort → Zulassen.";
-  if(code === 2) hint = "Position nicht verfügbar. Prüfe GPS/Standortdienste (Android Standort an).";
-  if(code === 3) hint = "Timeout. Geh kurz ans Fenster oder warte 10–20 Sekunden.";
-
-  alert(`Standort-Problem:\n${msg}\n\nTipp:\n${hint}`);
-}
-
-function getLocationOnce(){
-  clearDebug();
-  if(!ensureSecureContext()) return;
-  if(!navigator.geolocation){
-    setStatus("Geolocation nicht verfügbar", "bad");
-    alert("Dein Browser unterstützt kein GPS/Geolocation.");
+function renderVisits(){
+  if(!visits.length){
+    $("visitsBox").innerHTML = `<span class="muted">Noch nichts gespeichert.</span>`;
     return;
   }
+  const html = visits.slice(0,50).map(v=>{
+    const d = new Date(v.time);
+    const t = d.toLocaleString();
+    const title = escapeHtml(v.title || "Ort");
+    const coords = `${v.lat2
+/* ===================== Wikipedia + OSM (Infos) ===================== */
 
-  setStatus("Hole Standort…", "warn");
-  logDebug("➡️ getCurrentPosition gestartet…");
-
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      logDebug("✅ Standort gefunden (getCurrentPosition).");
-      updateGpsUI(pos);
-      setStatus("Standort ok", "ok");
-      // Direkt Infos holen:
-      fetchPlaceInfo(true);
-    },
-    err=>onGeoError(err, "getCurrentPosition"),
-    { enableHighAccuracy:true, timeout:20000, maximumAge:0 }
-  );
-}
-
-function startTracking(){
-  clearDebug();
-  if(!ensureSecureContext()) return;
-  if(!navigator.geolocation){
-    setStatus("Geolocation nicht verfügbar", "bad");
-    alert("Dein Browser unterstützt kein GPS/Geolocation.");
-    return;
-  }
-
-  // Erst einmal holen (wichtig auf Android), dann watch starten:
-  setStatus("Starte Tracking…", "warn");
-  logDebug("➡️ Tracking: zuerst getCurrentPosition…");
-
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      logDebug("✅ Tracking-Start: erster Fix da.");
-      updateGpsUI(pos);
-
-      // Danach watchPosition:
-      stopTracking(); // falls schon aktiv
-      $("btnStop").disabled = false;
-      logDebug("➡️ watchPosition gestartet…");
-
-      watchId = navigator.geolocation.watchPosition(
-        p=>{
-          updateGpsUI(p);
-          setStatus("Tracking läuft", "ok");
-
-          // Auto-Refresh der Ortsinfos, aber nicht zu oft:
-          if(lastFix?.accuracy <= 90){
-            fetchPlaceInfo(false);
-          }
-        },
-        err=>onGeoError(err, "watchPosition"),
-        { enableHighAccuracy:true, timeout:20000, maximumAge:5000 }
-      );
-    },
-    err=>onGeoError(err, "Tracking-Start getCurrentPosition"),
-    { enableHighAccuracy:true, timeout:20000, maximumAge:0 }
-  );
-
-  $("btnStop").disabled = false;
-}
-
-function stopTracking(){
-  if(watchId!==null){
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-    setStatus("Tracking gestoppt", "warn");
-    logDebug("⏹ watchPosition gestoppt.");
-  }
-  $("btnStop").disabled = true;
-}
-
-/* ------------------ Wikipedia + OSM ------------------ */
-async function reverseGeocode(lat,lon){
+async function reverseGeocode(lat, lon){
   try{
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
     const r = await fetch(url, { headers: { "Accept":"application/json" }});
+    if(!r.ok) throw new Error("Nominatim HTTP " + r.status);
     const j = await r.json();
     const a = j.address || {};
-    const name = a.city || a.town || a.village || a.municipality || a.suburb || a.county || j.name || null;
+
+    const name =
+      a.village || a.town || a.city || a.municipality || a.suburb || a.county || j.name || null;
 
     const parts=[];
     if(a.county && a.county!==name) parts.push(a.county);
     if(a.state) parts.push(a.state);
     if(a.country) parts.push(a.country);
-    return { name, region: parts.length ? "– "+parts.join(", ") : "" };
+
+    return { name, region: parts.length ? "– "+parts.join(", ") : "", raw: a };
   }catch(e){
-    return { name:null, region:"" };
+    logDebug("⚠️ reverseGeocode Fehler: " + (e?.message || e));
+    return { name:null, region:"", raw:null };
   }
 }
 
 async function wikiGeosearch(lat,lon,radius=1200,limit=20){
-  const url = `https://de.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lon}&gsradius=${radius}&gslimit=${limit}&format=json&origin=*`;
-  const j = await fetch(url).then(r=>r.json());
-  return j?.query?.geosearch || [];
+  try{
+    const url = `https://de.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lon}&gsradius=${radius}&gslimit=${limit}&format=json&origin=*`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error("Wikipedia geosearch HTTP " + r.status);
+    const j = await r.json();
+    return j?.query?.geosearch || [];
+  }catch(e){
+    logDebug("⚠️ wikiGeosearch Fehler: " + (e?.message || e));
+    return [];
+  }
 }
 
 async function wikiSummaryByTitle(title){
   try{
-    const sumUrl = `https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-    const sum = await fetch(sumUrl).then(r=>r.json());
-    const articleTitle = sum?.title || title;
-    return {
-      title: articleTitle,
-      extract: sum?.extract || "",
-      url: sum?.content_urls?.desktop?.page || `https://de.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
-    };
+    const url = `https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+    const r = await fetch(url, { headers: { "Accept":"application/json" }});
+    if(!r.ok) throw new Error("Wiki summary HTTP " + r.status);
+    const j = await r.json();
+
+    const extract = (j.extract || "").trim();
+    const pageUrl = j?.content_urls?.desktop?.page || "";
+    return { title: j.title || title, extract, url: pageUrl };
   }catch(e){
+    logDebug("⚠️ wikiSummaryByTitle Fehler ("+title+"): " + (e?.message || e));
     return null;
   }
 }
@@ -374,216 +285,320 @@ async function wikiSummaryByTitle(title){
 async function wikiSummaryBySearch(queryTitle){
   try{
     const sUrl = `https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(queryTitle)}&srlimit=1&format=json&origin=*`;
-    const s = await fetch(sUrl).then(r=>r.json());
+    const r = await fetch(sUrl);
+    if(!r.ok) throw new Error("Wikipedia search HTTP " + r.status);
+    const s = await r.json();
     const t = s?.query?.search?.[0]?.title;
     if(!t) return null;
     return await wikiSummaryByTitle(t);
   }catch(e){
+    logDebug("⚠️ wikiSummaryBySearch Fehler ("+queryTitle+"): " + (e?.message || e));
     return null;
   }
 }
 
-/* ------------------ POI Auswahl ------------------ */
-const POI_KEYWORDS = [
-  "brücke","tor","burg","schloss","kirche","dom","kathedrale","kloster","denkmal","museum",
-  "rathaus","platz","park","wall","stadtmauer","aussicht","turm","basilika","residenz",
-  "stadttor","kapelle","ruine","altstadt"
-];
-
-function keywordScore(title){
-  const t = title.toLowerCase();
-  let s=0;
-  for(const k of POI_KEYWORDS){
-    if(t.includes(k)) s+=3;
-  }
-  if(t.includes("liste") || t.includes("bahnlinie") || t.includes("straße")) s-=2;
-  return s;
-}
-function proximityScore(dist){
-  if(dist < 50) return 10;
-  if(dist < 120) return 8;
-  if(dist < 250) return 6;
-  if(dist < 500) return 4;
-  if(dist < 900) return 2;
-  return 0;
-}
-
-async function pickBestPoi(lat,lon){
-  const items = await wikiGeosearch(lat,lon,1200,20);
-  if(!items.length) return null;
-
-  const scored = items.map(it=>{
-    const total = keywordScore(it.title) + proximityScore(it.dist);
-    return { ...it, total };
-  }).sort((a,b)=>b.total-a.total);
-
-  const best = scored[0];
-  const goodEnough = (best.dist < 160) || (keywordScore(best.title) >= 3);
-  if(!goodEnough) return null;
-
-  return { title: best.title, dist: Math.round(best.dist), score: best.total };
-}
-
+/* Highlights aus OSM Overpass (schnell, aber kann manchmal blocken) */
 async function getHighlights(lat,lon){
   try{
-    const items = await wikiGeosearch(lat,lon,6000,10);
-    return items.slice(0,6).map(it=>({
-      title: it.title,
-      dist: Math.round(it.dist),
-      url: `https://de.wikipedia.org/wiki/${encodeURIComponent(it.title)}`
-    }));
+    const overpass = "https://overpass-api.de/api/interpreter";
+    const q = `
+      [out:json][timeout:12];
+      (
+        node(around:1200,${lat},${lon})["tourism"];
+        node(around:1200,${lat},${lon})["historic"];
+        node(around:1200,${lat},${lon})["amenity"="museum"];
+        way(around:1200,${lat},${lon})["tourism"];
+        way(around:1200,${lat},${lon})["historic"];
+        way(around:1200,${lat},${lon})["amenity"="museum"];
+      );
+      out center 25;
+    `;
+    const r = await fetch(overpass, { method:"POST", body:q });
+    if(!r.ok) throw new Error("Overpass HTTP " + r.status);
+    const j = await r.json();
+    const els = Array.isArray(j.elements) ? j.elements : [];
+    const names = [];
+    for(const e of els){
+      const n = e.tags?.name;
+      if(n && !names.includes(n)) names.push(n);
+      if(names.length>=6) break;
+    }
+    return names;
   }catch(e){
+    logDebug("⚠️ Highlights Fehler: " + (e?.message || e));
     return [];
   }
 }
 
-/* ------------------ Vlog Text Generator ------------------ */
-function makeHooks(placeName, kind){
-  const core = placeName.trim();
-  const base = [
-    `Ich steh grad bei ${core} – und das hat mehr Geschichte, als man auf den ersten Blick denkt.`,
-    `${core} kennst du vielleicht vom Vorbeifahren… aber die Story dahinter ist echt spannend.`,
-    `Kurzer Funfact zu ${core}: Wenn du das weißt, siehst du den Ort komplett anders.`,
-    `Wenn du mal in der Gegend bist: ${core} ist so ein Ort, den man nicht unterschätzen darf.`
-  ];
-  if(kind==="poi") base.unshift(`Genau hier bei ${core} passiert mehr, als man vermutet – hör kurz zu.`);
-  return base;
-}
+/* POI auswählen: möglichst nah + interessant */
+async function pickBestPoi(lat,lon){
+  const list = await wikiGeosearch(lat,lon,1200,20);
+  if(!list.length) return null;
 
-function extractFacts(extract, maxFacts){
-  const s = splitSentences(extract);
-  return s.slice(0, maxFacts).map(x=>shorten(x, 190));
-}
+  // Score: Distanz + Titel-Länge + "interessant" Keywords
+  const kw = /(Burg|Schloss|Kirche|Brücke|Tor|Denkmal|Museum|Kloster|Kathedrale|Dom|Platz|Rathaus|Altstadt|Festung)/i;
 
-function brollIdeas(placeLabel){
-  const ideas = [
-    "Weitwinkel-Totale (2–3 Sekunden ruhig stehen lassen)",
-    "Detailshot (Schild, Stein, Struktur, Ornament)",
-    "Langsamer Schwenk von unten nach oben",
-    "Ein kurzer Cut: Umgebung + Geräusche mitnehmen",
-    "Kurz Selfie-Frontcam: „Ich bin genau hier…“"
-  ];
-  const t = placeLabel.toLowerCase();
-  if(t.includes("brücke")) ideas.unshift("Über die Brücke laufen + Blick nach unten (Wasser/Verkehr)");
-  if(t.includes("tor")) ideas.unshift("Durchs Tor laufen (klassischer Übergang)");
-  if(t.includes("burg") || t.includes("schloss")) ideas.unshift("Mauer/Innenhof + Türme als Establishing Shot");
-  if(t.includes("kirche") || t.includes("dom")) ideas.unshift("Außen: Turm/Portal; innen nur, wenn erlaubt");
-  return ideas.slice(0,6);
-}
-
-function pickTwoHighlightsText(highlights){
-  if(!highlights || !highlights.length) return "";
-  const pick = highlights.slice(0,2).map(h=>h.title);
-  if(pick.length===1) return `Wenn du noch Zeit hast: ${pick[0]} ist auch in der Nähe.`;
-  return `Wenn du noch Zeit hast: ${pick[0]} oder ${pick[1]} lohnt sich auch.`;
-}
-
-function buildVlogScript({placeLabel, kind, extract, highlights, hookText, seconds}){
-  const maxFacts = seconds === 60 ? 5 : 3;
-  const facts = extractFacts(extract, maxFacts);
-  const broll = brollIdeas(placeLabel).map(x=>`- ${x}`).join("\n");
-  const bonus = pickTwoHighlightsText(highlights);
-
-  const personal = seconds === 60
-    ? "Ich find ja: Genau solche Orte sind perfekt, weil du sofort ein Motiv hast – und gleichzeitig was erzählen kannst, ohne dass es sich nach Schule anhört."
-    : "Ich mag solche Spots, weil man in kurzer Zeit richtig gute Bilder und eine Story hat.";
-
-  const cta = "Warst du hier schon mal – oder kennst du noch einen Ort, der ähnlich spannend ist? Schreib’s mir in die Kommentare.";
-
-  if(seconds === 60){
-    return `VLOG-SKRIPT (ca. 50–70 Sek.)
-
-HOOK:
-${hookText}
-
-KURZ & SPANNEND:
-${facts.length ? facts.map((f,i)=>`${i+1}) ${f}`).join("\n") : "Ich hab dazu gerade keine sichere Kurzbeschreibung gefunden – aber der Ort ist stark genug fürs Bild."}
-
-PERSÖNLICH:
-${personal}
-
-${bonus ? `BONUS:\n${bonus}\n` : ""}
-
-B-ROLL IDEEN:
-${broll}
-
-CTA:
-„${cta}”`;
+  let best = null;
+  for(const it of list){
+    const dist = Number(it.dist || 999999);
+    let score = dist;
+    if(kw.test(it.title)) score -= 250;
+    if((it.title || "").length < 18) score -= 40;
+    if(!best || score < best.score){
+      best = { title: it.title, dist, score };
+    }
   }
-
-  return `VLOG-SKRIPT (ca. 20–40 Sek.)
-
-HOOK:
-${hookText}
-
-3 schnelle Fakten:
-${facts.length ? facts.map((f,i)=>`${i+1}) ${f}`).join("\n") : "1) Keine sichere Kurzbeschreibung gefunden.\n2) Trotzdem ein starker Spot fürs Bild.\n3) Perfekt als kurzer Vlog-Zwischenschnitt."}
-
-Kurz persönlich:
-${personal}
-
-${bonus ? `Mini-Bonus:\n${bonus}\n` : ""}
-
-B-ROLL:
-${broll}
-
-CTA:
-„${cta}”`;
+  return best;
 }
 
-/* ------------------ UI Fill ------------------ */
-function setInfoUI({kind, title, url, extract, labelLine, poiDist, highlights}){
-  currentInfo.kind = kind;
-  currentInfo.title = title;
-  currentInfo.url = url;
-  currentInfo.extract = extract || "";
-  currentInfo.labelLine = labelLine || "";
-  currentInfo.poiDist = poiDist ?? null;
-  currentInfo.highlights = highlights || [];
+/* UI befüllen */
+let currentInfo = {
+  kind:"", title:"", url:"", extract:"",
+  labelLine:"", poiDist:null, highlights:[],
+  hooks:[], hookIndex:0
+};
 
-  $("placeLine").innerHTML = `<strong>${escapeHtml(labelLine || "—")}</strong>`;
-  $("wikiTitleBadge").innerText = title ? `Wikipedia: ${title}` : "Wikipedia: —";
-
-  const link = $("wikiLink");
-  if(url){
-    link.href = url;
-    link.style.display = "inline";
-  } else {
-    link.style.display = "none";
+function setWikiLink(url){
+  if(!url){
+    $("wikiLink").textContent = "—";
+    $("wikiLink").className = "muted";
+    return;
   }
+  $("wikiLink").innerHTML = `<a href="${url}" target="_blank" rel="noopener">öffnen</a>`;
+}
 
-  $("kindBadge").style.display = "inline-block";
-  $("kindBadge").innerText = (kind === "poi") ? "POI" : "Ort";
+function setInfoUI(data){
+  currentInfo = { ...currentInfo, ...data };
 
-  if(kind === "poi"){
-    $("distBadge").style.display = "inline-block";
-    $("distBadge").innerText = (poiDist!=null) ? `${poiDist} m` : "—";
-  } else {
-    $("distBadge").style.display = "none";
-  }
+  $("infoIntro").textContent = "Infos geladen.";
+  const h = (currentInfo.highlights && currentInfo.highlights.length)
+    ? `<div class="small"><strong>In der Nähe:</strong><br>${currentInfo.highlights.map(x=>"• "+escapeHtml(x)).join("<br>")}</div>`
+    : `<div class="small muted">Keine Highlights aus OSM gefunden (nicht schlimm).</div>`;
 
-  $("wikiText").innerText = extract || "Keine Kurzbeschreibung gefunden.";
+  const extract = escapeHtml(currentInfo.extract || "");
+  const label = escapeHtml(currentInfo.labelLine || "");
 
-  if(highlights && highlights.length){
-    $("highlights").innerHTML =
-      `<strong>Mehr in der Nähe:</strong><br>` +
-      highlights.map(h=>`• <a href="${h.url}" target="_blank" rel="noreferrer">${escapeHtml(h.title)}</a> <span class="small">(${h.dist} m)</span>`).join("<br>");
-  } else {
-    $("highlights").innerHTML = `<strong>Mehr in der Nähe:</strong><br><span class="small">Keine passenden Wikipedia-Orte gefunden.</span>`;
-  }
+  $("infoBox").innerHTML = `
+    <div><strong>${label || "📌 Ort"}</strong></div>
+    ${currentInfo.poiDist!=null ? `<div class="small muted">Entfernung: ca. ${Math.round(currentInfo.poiDist)} m</div>` : ""}
+    <div style="margin-top:8px;">${extract || "<span class='muted'>Keine Beschreibung gefunden.</span>"}</div>
+    <div class="sep"></div>
+    ${h}
+  `;
 
-  const labelForHooks = (kind==="poi") ? (title || "diesem Ort") : (labelLine?.replace(/^📌\s*Ort:\s*/,"") || title || "hier");
+  setWikiLink(currentInfo.url || "");
+
+  const kind = currentInfo.kind;
+  const title = currentInfo.title;
+  const labelLine = currentInfo.labelLine;
+
+  const labelForHooks = (kind==="poi")
+    ? (title || "diesem Ort")
+    : (labelLine?.replace(/^📌\s*Ort:\s*/,"").replace(/^Ort:\s*/,"") || title || "hier");
+
   currentInfo.hooks = makeHooks(labelForHooks, kind);
   currentInfo.hookIndex = 0;
 
-$("btnHook").disabled = false;
-$("btnCopy").disabled = false;
-$("btnSaveSpot").disabled = false;
+  $("btnHook").disabled = false;
+  $("btnCopy").disabled = false;
+  $("btnSaveSpot").disabled = false;
 
   updateScriptBox();
 }
 
-/* ------------------ Skript aktualisieren ------------------ */
+/* Der eigentliche Info-Fetch mit Fallback-Kaskade */
+async function fetchPlaceInfo(force){
+  if(!lastFix) return;
+
+  const now = Date.now();
+  if(!force && now - lastInfoFetchAt < 12000) return;
+  lastInfoFetchAt = now;
+
+  const {lat,lon,accuracy} = lastFix;
+
+  if(!force && lastInfoLatLon){
+    const d = distanceMeters(lastInfoLatLon.lat, lastInfoLatLon.lon, lat, lon);
+    if(d < 250) return;
+  }
+  lastInfoLatLon = {lat,lon};
+
+  setStatus("Suche Infos…", "warn");
+  clearDebug();
+  logDebug(`ℹ️ fetchPlaceInfo: acc=${Math.round(accuracy)}m lat=${lat.toFixed(5)} lon=${lon.toFixed(5)}`);
+
+  // 1) POI Versuch
+  try{
+    const poi = await pickBestPoi(lat,lon);
+    if(poi){
+      logDebug(`✅ POI gewählt: ${poi.title} (${poi.dist}m)`);
+      const sum = await wikiSummaryByTitle(poi.title);
+      const highlights = await getHighlights(lat,lon);
+      if(sum && (sum.extract || sum.title)){
+        setInfoUI({
+          kind: "poi",
+          title: sum.title,
+          url: sum.url,
+          extract: sum.extract,
+          labelLine: `📍 In der Nähe: ${sum.title}`,
+          poiDist: poi.dist,
+          highlights
+        });
+        setStatus("bereit", "ok");
+        return;
+      }
+      logDebug("⚠️ POI Summary leer → Fallback Ort");
+    } else {
+      logDebug("ℹ️ Kein starker POI → Fallback Ort");
+    }
+  }catch(e){
+    logDebug("⚠️ POI-Suche fehlgeschlagen → Fallback Ort");
+  }
+
+  // 2) Orts-Fallback
+  const place = await reverseGeocode(lat,lon);
+  let placeName = place?.name;
+
+  if(!placeName){
+    placeName = "Postau";
+    logDebug("⚠️ reverseGeocode lieferte keinen Ortsnamen → Fallback: Postau");
+  }
+
+  let sum2 = await wikiSummaryBySearch(placeName);
+
+  // 3) Nächstgrößerer Bereich aus OSM
+  if(!sum2 && place?.raw){
+    const a = place.raw;
+    const nextBigger = a.town || a.city || a.county || a.state || null;
+    if(nextBigger && nextBigger !== placeName){
+      logDebug(`ℹ️ Ort ohne Treffer → nächstgrößerer Bereich: ${nextBigger}`);
+      sum2 = await wikiSummaryBySearch(nextBigger);
+      if(sum2) placeName = nextBigger;
+    }
+  }
+
+  // 4) Letzter Notnagel
+  if(!sum2){
+    logDebug("⚠️ Ortssuche ohne Treffer → Notnagel: Landshut");
+    const s3 = await wikiSummaryBySearch("Landshut");
+    if(s3){
+      sum2 = s3;
+      placeName = "Landshut";
+    }
+  }
+
+  const highlights2 = await getHighlights(lat,lon);
+
+  if(sum2){
+    setInfoUI({
+      kind: "place",
+      title: sum2.title,
+      url: sum2.url,
+      extract: sum2.extract,
+      labelLine: `📌 Ort: ${placeName} ${place?.region || ""}`.trim(),
+      poiDist: null,
+      highlights: highlights2
+    });
+  } else {
+    setInfoUI({
+      kind: "place",
+      title: placeName,
+      url: "",
+      extract: "Leider keine passende Wikipedia-Kurzbeschreibung gefunden. (Passiert manchmal bei sehr kleinen Ortsteilen.)",
+      labelLine: `📌 Ort: ${placeName} ${place?.region || ""}`.trim(),
+      poiDist: null,
+      highlights: highlights2
+    });
+  }
+
+  setStatus("bereit", "ok");
+}
+
+/* Button: Infos holen */
+function getCurrentOncePromise(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation) return reject(new Error("Geolocation nicht verfügbar"));
+    navigator.geolocation.getCurrentPosition(
+      (pos)=>{ onFix(pos); resolve(pos); },
+      (err)=>reject(err),
+      { enableHighAccuracy:true, timeout:20000, maximumAge:0 }
+    );
+  });
+}
+
+$("btnInfo").addEventListener("click", async ()=>{
+  try{
+    if(!lastFix){
+      setStatus("Hole Standort für Infos…", "warn");
+      await getCurrentOncePromise();
+    }
+    await fetchPlaceInfo(true);
+  }catch(e){
+    setStatus("Infos nicht möglich: Standort-Freigabe prüfen", "bad");
+    logDebug("❌ btnInfo Fehler: " + (e?.message || e));
+    alert("Standort klappt nicht. Bitte Standort für diese Website erlauben (Browser-Einstellungen → Website-Einstellungen → Standort).");
+  }
+});
+/* ===================== Vlog Script (30/60s) ===================== */
+
+function makeHooks(placeLabel, kind){
+  const p = placeLabel || "hier";
+  const hooks = [
+    `Wenn du denkst, ${p} ist nur „ganz normal“ – warte kurz…`,
+    `Kurzer Stopp bei ${p}: Das hier hat mehr Geschichte, als man glaubt.`,
+    `Das Spannende an ${p} ist nicht das, was man sofort sieht…`,
+    `Heute zeig ich dir ${p} – und warum das ein richtig guter Vlog-Spot ist.`,
+    `Ich steh gerade bei ${p}. Und jetzt kommt der Teil, den kaum jemand kennt…`
+  ];
+  if(kind==="poi"){
+    hooks.unshift(`Ich bin gerade direkt bei ${p} – und das hier ist echt besonders.`);
+  }
+  return hooks;
+}
+
+function compactExtract(text, maxChars){
+  const t = (text || "").replace(/\s+/g," ").trim();
+  if(t.length <= maxChars) return t;
+  return t.slice(0, maxChars).replace(/[,;:\s]+$/,"") + "…";
+}
+
+function buildVlogScript({ placeLabel, kind, extract, highlights, hookText, seconds }){
+  const p = placeLabel || "diesem Ort";
+  const hl = Array.isArray(highlights) ? highlights.slice(0,4) : [];
+  const hasHL = hl.length>0;
+
+  if(seconds <= 30){
+    const info = compactExtract(extract, 260);
+    const hlLine = hasHL ? `In der Nähe: ${hl.join(", ")}.` : "";
+    return [
+      hookText,
+      "",
+      `Ich bin gerade bei ${p}.`,
+      info ? `Kurz dazu: ${info}` : `Kurz dazu: ${p} ist ein spannender Punkt in der Gegend.`,
+      hlLine,
+      "",
+      `Wenn du hier mal vorbeikommst: kurz stehen bleiben, umschauen – das lohnt sich.`
+    ].filter(Boolean).join("\n");
+  }
+
+  // 60 Sekunden
+  const info = compactExtract(extract, 520);
+  const hlLines = hasHL
+    ? ["Noch ein paar Spots in der Nähe:", ...hl.map(x=>`- ${x}`)]
+    : ["Wenn du magst: Schau dich hier auch nach Infotafeln oder alten Fotos um – das macht’s direkt lebendiger."];
+
+  return [
+    hookText,
+    "",
+    `Ich bin gerade bei ${p}.`,
+    "",
+    info ? `Warum das interessant ist: ${info}` : `Warum das interessant ist: ${p} hat eine Geschichte, die man nicht sofort sieht.`,
+    "",
+    ...hlLines,
+    "",
+    `Pro-Tipp fürs Vloggen: Film erst eine Totale, dann Details (Schilder, Steine, Wappen, Türen) – und erzähl genau diesen Mini-Fakt dazu.`,
+  ].join("\n");
+}
+
 function updateScriptBox(){
   const seconds = Number($("lenSel").value || "30");
   const hookText =
@@ -607,19 +622,14 @@ function updateScriptBox(){
   $("scriptBox").value = script;
 }
 
-/* ------------------ Hook wechseln ------------------ */
 function nextHook(){
   if(!currentInfo.hooks || !currentInfo.hooks.length) return;
-  currentInfo.hookIndex =
-    (currentInfo.hookIndex + 1) % currentInfo.hooks.length;
+  currentInfo.hookIndex = (currentInfo.hookIndex + 1) % currentInfo.hooks.length;
   updateScriptBox();
   setStatus("Hook gewechselt", "ok");
   setTimeout(()=>setStatus("bereit"), 900);
 }
 
-$("lenSel").addEventListener("change", updateScriptBox);
-
-/* ------------------ Skript kopieren ------------------ */
 async function copyVlogScript(){
   const text = $("scriptBox").value.trim();
   if(!text){
@@ -635,7 +645,6 @@ async function copyVlogScript(){
   }
 }
 
-/* ------------------ Ort speichern ------------------ */
 function saveCurrentSpot(){
   if(!lastFix){
     alert("Kein GPS-Fix vorhanden.");
@@ -655,12 +664,23 @@ function saveCurrentSpot(){
   setTimeout(()=>setStatus("bereit"), 1200);
 }
 
-/* ------------------ Initialer UI-Status ------------------ */
-$("btnInfo").disabled = true;
+/* Buttons */
+$("btnHook").addEventListener("click", nextHook);
+$("btnCopy").addEventListener("click", copyVlogScript);
+$("btnSaveSpot").addEventListener("click", saveCurrentSpot);
+$("btnScript").addEventListener("click", updateScriptBox);
+$("lenSel").addEventListener("change", updateScriptBox);
+
+/* Initialer UI-Status */
+$("btnInfo").disabled = false;      // Infos darf man immer holen
 $("btnHook").disabled = true;
 $("btnCopy").disabled = true;
 $("btnSaveSpot").disabled = true;
 
+/* Beim Laden einmal versuchen, Standort zu holen (nur wenn erlaubt) */
+setTimeout(()=>{ try{ getCurrentOnce(); }catch{} }, 400);
+
+setStatus("bereit", "ok");
 </script>
 </body>
 </html>
