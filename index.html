@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vlog-Orte</title>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    body { margin:0; font-family: system-ui, Arial; background:#0f0f10; color:#eaeaea; }
+    header { padding:12px 14px; border-bottom:1px solid #2a2a2a; background:#0f0f10; position:sticky; top:0; z-index:10; }
+    button, select, input {
+      background:#1b1b1d; border:1px solid #2f2f33; color:#eaeaea;
+      padding:10px 12px; border-radius:12px;
+    }
+    button { cursor:pointer; }
+    .wrap { padding:12px 14px; display:grid; gap:12px; }
+    .card { background:#151517; border:1px solid #2a2a2a; border-radius:18px; padding:12px; }
+    #map { height: 45vh; border-radius:18px; }
+    .list { display:grid; gap:10px; }
+    .item h3 { margin:0 0 6px 0; font-size:16px; }
+    .muted { color:#a8a8aa; font-size:13px; }
+  </style>
+</head>
+
+<body>
+<header>
+  <strong>Vlog-Orte</strong><br>
+  <span class="muted" id="status">bereit</span>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <button id="start">Tracking starten</button>
+    <button id="stop" disabled>Stop</button>
+  </div>
+
+  <div id="map" class="card"></div>
+
+  <div class="card">
+    <strong>Besuchte Orte</strong>
+    <div class="list" id="list"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+
+const STORAGE = "vlog_visits";
+let visits = JSON.parse(localStorage.getItem(STORAGE) || "[]");
+
+const map = L.map("map").setView([48.8, 12.3], 13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution:"© OpenStreetMap"
+}).addTo(map);
+
+let me;
+let watchId;
+let anchor = null;
+
+function save(){ localStorage.setItem(STORAGE, JSON.stringify(visits)); }
+
+function hav(a,b,c,d){
+  const R=6371000,toRad=x=>x*Math.PI/180;
+  const dLat=toRad(c-a), dLon=toRad(d-b);
+  const x=Math.sin(dLat/2)**2 + Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+
+function render(){
+  document.getElementById("list").innerHTML="";
+  visits.forEach(v=>{
+    const div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`<h3>${v.title}</h3><p class="muted">${new Date(v.time).toLocaleString()}</p>`;
+    document.getElementById("list").appendChild(div);
+    L.circleMarker([v.lat,v.lon]).addTo(map);
+  });
+}
+
+async function onStop(lat,lon){
+  const url=`https://de.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lon}&gsradius=1500&gslimit=1&format=json&origin=*`;
+  const r=await fetch(url); const j=await r.json();
+  const t=j.query.geosearch[0];
+  const title=t? t.title:"Interessanter Ort";
+  visits.unshift({lat,lon,time:Date.now(),title});
+  save(); render();
+}
+
+document.getElementById("start").onclick=()=>{
+  watchId=navigator.geolocation.watchPosition(p=>{
+    const {latitude:lat,longitude:lon,accuracy}=p.coords;
+    if(accuracy>80)return;
+    document.getElementById("status").innerText="Tracking läuft";
+    if(!me){ me=L.marker([lat,lon]).addTo(map); map.setView([lat,lon],15);}
+    else me.setLatLng([lat,lon]);
+
+    const now=Date.now();
+    if(!anchor){ anchor={lat,lon,start:now}; return; }
+    const d=hav(anchor.lat,anchor.lon,lat,lon);
+    if(d<120 && (now-anchor.start)>300000){
+      onStop(anchor.lat,anchor.lon);
+      anchor={lat,lon,start:now};
+    }
+    if(d>120) anchor={lat,lon,start:now};
+  });
+  document.getElementById("start").disabled=true;
+  document.getElementById("stop").disabled=false;
+};
+
+document.getElementById("stop").onclick=()=>{
+  navigator.geolocation.clearWatch(watchId);
+  document.getElementById("status").innerText="gestoppt";
+  document.getElementById("start").disabled=false;
+  document.getElementById("stop").disabled=true;
+};
+
+render();
+</script>
+</body>
+</html>
