@@ -576,6 +576,91 @@ function setInfoUI({kind, title, url, extract, labelLine, poiDist, highlights}){
   currentInfo.hooks = makeHooks(labelForHooks, kind);
   currentInfo.hookIndex = 0;
 
-  $("btnHook").disabled = false;
-  $("btnCopy").disabled = false;
-  $("b
+$("btnHook").disabled = false;
+$("btnCopy").disabled = false;
+$("btnSaveSpot").disabled = false;
+
+  updateScriptBox();
+}
+
+/* ------------------ Skript aktualisieren ------------------ */
+function updateScriptBox(){
+  const seconds = Number($("lenSel").value || "30");
+  const hookText =
+    currentInfo.hooks?.[currentInfo.hookIndex] ||
+    "Ich bin gerade hier – und das ist ziemlich spannend.";
+
+  const placeLabel =
+    currentInfo.kind === "poi"
+      ? (currentInfo.title || "diesem Ort")
+      : (currentInfo.labelLine || currentInfo.title || "diesem Ort");
+
+  const script = buildVlogScript({
+    placeLabel,
+    kind: currentInfo.kind,
+    extract: currentInfo.extract,
+    highlights: currentInfo.highlights,
+    hookText,
+    seconds
+  });
+
+  $("scriptBox").value = script;
+}
+
+/* ------------------ Hook wechseln ------------------ */
+function nextHook(){
+  if(!currentInfo.hooks || !currentInfo.hooks.length) return;
+  currentInfo.hookIndex =
+    (currentInfo.hookIndex + 1) % currentInfo.hooks.length;
+  updateScriptBox();
+  setStatus("Hook gewechselt", "ok");
+  setTimeout(()=>setStatus("bereit"), 900);
+}
+
+$("lenSel").addEventListener("change", updateScriptBox);
+
+/* ------------------ Skript kopieren ------------------ */
+async function copyVlogScript(){
+  const text = $("scriptBox").value.trim();
+  if(!text){
+    alert("Noch kein Skript vorhanden.");
+    return;
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    setStatus("Skript kopiert ✅", "ok");
+    setTimeout(()=>setStatus("bereit"), 1200);
+  }catch{
+    alert("Kopieren nicht möglich – bitte manuell markieren.");
+  }
+}
+
+/* ------------------ Ort speichern ------------------ */
+function saveCurrentSpot(){
+  if(!lastFix){
+    alert("Kein GPS-Fix vorhanden.");
+    return;
+  }
+  visits.unshift({
+    title: currentInfo.title || "Ort",
+    url: currentInfo.url || "",
+    lat: lastFix.lat,
+    lon: lastFix.lon,
+    time: Date.now()
+  });
+  visits = visits.slice(0, 400);
+  saveVisits();
+  renderVisits();
+  setStatus("Ort gespeichert ✅", "ok");
+  setTimeout(()=>setStatus("bereit"), 1200);
+}
+
+/* ------------------ Initialer UI-Status ------------------ */
+$("btnInfo").disabled = true;
+$("btnHook").disabled = true;
+$("btnCopy").disabled = true;
+$("btnSaveSpot").disabled = true;
+
+</script>
+</body>
+</html>
